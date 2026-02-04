@@ -23,28 +23,64 @@ pipeline {
     }
 
     stage('Smoke test') {
-      agent { label 'docker-agent' }
       steps {
         sh '''
           set -eux
 
-          API_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' cicd-demo-multibranch_main-api-1)
-          echo "API_IP=$API_IP"
+          NET=$(docker network ls --format '{{.Name}}' | grep -E 'cicd-demo.*_default$' | head -n 1)
+
+          echo "Detected network: ${NET}"
 
           for i in $(seq 1 30); do
-            if curl -fsS "http://$API_IP:5000/api/health" >/dev/null; then
-              echo "health ok"
+            if docker run --rm --network "${NET}" curlimages/curl:8.6.0 -fsS http://api:5000/api/health; then
+              echo "Smoke test passed"
               exit 0
             fi
             sleep 1
           done
 
-          echo "health check failed"
-          docker logs cicd-demo-multibranch_main-api-1 || true
+          echo "Smoke test failed"
           exit 1
         '''
       }
     }
+    stage('Debug Info') {
+      steps {
+        sh '''
+          set +e
+          echo "=== WHOAMI / PWD ==="
+          whoami
+          pwd
+
+          echo "=== DOCKER INFO ==="
+          docker version
+          docker info | head -n 60
+
+          echo "=== CONTAINERS ==="
+          docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+
+          echo "=== COMPOSE PROJECT (guess) ==="
+          ls -la
+          echo "--- docker-compose.yml ---"
+          sed -n '1,200p' docker-compose.yml || true
+
+          echo "=== NETWORKS (filtered) ==="
+          docker network ls | grep -E 'cicd-demo|jenkins|default' || true
+
+          echo "=== COMPOSE PS ==="
+          docker-compose ps || true
+
+          echo "=== INSPECT COMPOSE NETWORK ==="
+          NET=$(docker network ls --format '{{.Name}}' | grep -E 'cicd-demo.*_default$' | head -n 1)
+          echo "NET=$NET"
+          docker network inspect "$NET" | head -n 80 || true
+
+          echo "=== TRY CURL FROM NETWORK ==="
+          docker run --rm --network "$NET" curlimages/curl:8.6.0 -fsS http://api:5000/api/health || true
+        '''
+      }
+    }
+
 
   }
 
