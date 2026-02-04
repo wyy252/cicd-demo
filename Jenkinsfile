@@ -70,9 +70,10 @@ pipeline {
               sonarsource/sonar-scanner-cli:11 \
               -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
               -Dsonar.projectName="$SONAR_PROJECT_NAME" \
-              -Dsonar.sources=app \
-              -Dsonar.python.version=3.11 \
+              -Dsonar.sources=. \
+              -Dsonar.exclusions=**/.git/**,**/dist/**,**/__pycache__/**,**/*.tar.gz \
               -Dsonar.sourceEncoding=UTF-8
+
 
             test -f .scannerwork/report-task.txt
             echo "report-task.txt:"
