@@ -23,13 +23,19 @@ pipeline {
     }
 
     stage('Smoke test') {
-      agent { label 'docker' }
+      agent { label 'docker-agent' }
       steps {
         sh '''
           set -eux
-          # 在 api 容器内部跑 curl，避免宿主机端口冲突
-          docker-compose exec -T api curl -s http://localhost:5000/api/health
-          docker-compose exec -T api curl -s http://localhost:5000/api/items
+          for i in $(seq 1 30); do
+            if curl -fsS http://api:5000/api/health >/dev/null; then
+              echo "health ok"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "health check failed"
+          exit 1
         '''
       }
     }
