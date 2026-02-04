@@ -71,7 +71,6 @@ pipeline {
               -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
               -Dsonar.projectName="$SONAR_PROJECT_NAME" \
               -Dsonar.sources=app \
-              -Dsonar.tests=tests \
               -Dsonar.python.version=3.11 \
               -Dsonar.sourceEncoding=UTF-8
 
