@@ -54,6 +54,7 @@ pipeline {
             echo "WORKSPACE PWD=$(pwd)"
             ls -la
 
+            echo "=== run scanner & debug inside container ==="
             docker run --rm --network jenkins-net --user 0:0 \
               -e SONAR_HOST_URL="$SONAR_HOST_URL" \
               -e SONAR_TOKEN="$SONAR_AUTH_TOKEN" \
@@ -61,21 +62,33 @@ pipeline {
               -v "$PWD:/usr/src" \
               -w /usr/src \
               sonarsource/sonar-scanner-cli:11 \
-              -Dsonar.projectKey=cicd-demo \
-              -Dsonar.projectName=cicd-demo \
-              -Dsonar.sources=. \
-              -Dsonar.exclusions=**/.git/**,**/dist/**,**/__pycache__/**,**/*.tar.gz \
-              -Dsonar.sourceEncoding=UTF-8 \
-              -Dsonar.working.directory=/usr/src/.scannerwork
+              /bin/bash -lc '
+                set -eux
+                sonar-scanner \
+                  -Dsonar.projectKey=cicd-demo \
+                  -Dsonar.projectName=cicd-demo \
+                  -Dsonar.sources=. \
+                  -Dsonar.exclusions=**/.git/**,**/dist/**,**/__pycache__/**,**/*.tar.gz \
+                  -Dsonar.sourceEncoding=UTF-8 \
+                  -Dsonar.working.directory=/usr/src/.scannerwork
 
-            echo "=== debug: scanner output files ==="
+                echo "=== inside container: list /usr/src/.scannerwork ==="
+                ls -la /usr/src/.scannerwork || true
+
+                echo "=== inside container: show report-task.txt if exists ==="
+                find / -maxdepth 5 -name report-task.txt -print -exec cat {} \\; || true
+              '
+
+            echo "=== after container exit: list workspace .scannerwork ==="
             ls -la .scannerwork || true
-            echo "=== find report-task.txt ==="
+
+            echo "=== after container exit: find report-task.txt in workspace ==="
             find . -maxdepth 4 -name report-task.txt -print -exec cat {} \\; || true
           '''
         }
       }
     }
+
 
 
 
