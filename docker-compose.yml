@@ -5,13 +5,12 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: staging_db
     volumes:
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
-      - ./db/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql
+      - ./db:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-proot"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 30
 
   api:
     build: ./app
