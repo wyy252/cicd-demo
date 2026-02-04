@@ -21,26 +21,3 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-
-  sonarqube:
-    image: sonarqube:community
-    environment:
-      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
-    ports:
-      - "9001:9000"
-    volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_extensions:/opt/sonarqube/extensions
-      - sonarqube_logs:/opt/sonarqube/logs
-    networks:
-      - default
-      - jenkins-net
-
-networks:
-  jenkins-net:
-    external: true
-
-volumes:
-  sonarqube_data:
-  sonarqube_extensions:
-  sonarqube_logs:
