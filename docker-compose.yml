@@ -28,4 +28,10 @@ services:
       SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
     ports:
       - "9000:9000"
+    networks:
+      - default
+      - jenkins-net
 
+networks:
+  jenkins-net:
+    external: true
