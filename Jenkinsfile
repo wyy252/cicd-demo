@@ -72,19 +72,21 @@ pipeline {
 
             docker run --rm --network "$NET" \
               -e SONAR_HOST_URL="$SONAR_HOST_URL" \
-              -e SONAR_LOGIN="$SONAR_AUTH_TOKEN" \
+              -e SONAR_TOKEN="$SONAR_AUTH_TOKEN" \
               -v "$PWD:/usr/src" \
               sonarsource/sonar-scanner-cli:latest \
-              -Dsonar.projectKey=cicd-demo \
-              -Dsonar.projectName=cicd-demo \
+              -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
+              -Dsonar.projectName="$SONAR_PROJECT_NAME" \
               -Dsonar.sources=app \
               -Dsonar.tests=tests \
               -Dsonar.python.version=3.11 \
-              -Dsonar.sourceEncoding=UTF-8
+              -Dsonar.sourceEncoding=UTF-8 \
+              -Dsonar.token="$SONAR_AUTH_TOKEN"
           '''
         }
       }
     }
+
 
     stage('Quality Gate') {
       agent { label 'docker-agent' }
