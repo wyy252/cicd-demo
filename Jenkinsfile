@@ -61,16 +61,26 @@ pipeline {
           sh '''
             set -eux
 
-            # Run Sonar scanner on the checked-out workspace
-            sonar-scanner \
-              -Dsonar.projectKey=$SONAR_PROJECT_KEY \
-              -Dsonar.projectName=$SONAR_PROJECT_NAME \
+            NET=$(docker network ls --format '{{.Name}}' | grep -E '^cicd-demo-multibranch_main_default$' || true)
+
+            if [ -z "$NET" ]; then
+              API_CID=$(docker-compose ps -q api)
+              NET=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s " $k}}{{end}}' "$API_CID" | awk '{print $1}')
+            fi
+
+            echo "Compose network = $NET"
+
+            docker run --rm --network "$NET" \
+              -e SONAR_HOST_URL="$SONAR_HOST_URL" \
+              -e SONAR_LOGIN="$SONAR_AUTH_TOKEN" \
+              -v "$PWD:/usr/src" \
+              sonarsource/sonar-scanner-cli:latest \
+              -Dsonar.projectKey=cicd-demo \
+              -Dsonar.projectName=cicd-demo \
               -Dsonar.sources=app \
               -Dsonar.tests=tests \
               -Dsonar.python.version=3.11 \
-              -Dsonar.sourceEncoding=UTF-8 \
-              -Dsonar.host.url=$SONAR_HOST_URL \
-              -Dsonar.login=$SONAR_AUTH_TOKEN
+              -Dsonar.sourceEncoding=UTF-8
           '''
         }
       }
