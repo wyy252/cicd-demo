@@ -64,6 +64,7 @@ pipeline {
             rm -rf .scannerwork || true
 
             docker run --rm --network jenkins-net \
+              --user 0:0 \
               -e SONAR_HOST_URL="$SONAR_HOST_URL" \
               -e SONAR_TOKEN="$SONAR_TOK" \
               -v "$PWD:/usr/src" \
