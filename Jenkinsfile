@@ -1,13 +1,17 @@
 pipeline {
-  agent any
+  agent none
 
   stages {
+
     stage('Checkout') {
-      steps { checkout scm }
+      agent any
+      steps {
+        checkout scm
+      }
     }
 
     stage('Build & Run (Docker)') {
-      agent { label 'docker' }   
+      agent { label 'docker' }
       steps {
         sh 'docker version'
         sh 'docker compose up -d --build'
@@ -16,7 +20,8 @@ pipeline {
     }
 
     stage('Smoke test') {
-      agent { label 'docker' }   
+      agent { label 'docker' }
+      steps {
         sh 'curl -s http://localhost:5000/api/health'
         sh 'curl -s http://localhost:5000/api/items'
       }
@@ -25,7 +30,9 @@ pipeline {
 
   post {
     always {
-      sh 'docker compose down'
+      node('docker') {
+        sh 'docker compose down || true'
+      }
     }
   }
 }
