@@ -6,7 +6,7 @@ pipeline {
       agent { label 'docker' }
       steps {
         sh 'docker version'
-        sh 'docker compose version || true'
+        sh 'docker-compose version || true'
         sh 'docker-compose --version || true'
         sh 'which docker || true'
       }
@@ -24,7 +24,7 @@ pipeline {
       agent { label 'docker' }
       steps {
         sh 'docker version'
-        sh 'docker compose up -d --build'
+        sh 'docker-compose up -d --build'
         sh 'docker ps'
       }
     }
@@ -41,7 +41,7 @@ pipeline {
   post {
     always {
       node('docker') {
-        sh 'docker compose down || true'
+        sh 'docker-compose down || true'
       }
     }
   }
