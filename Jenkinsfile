@@ -45,6 +45,7 @@ pipeline {
     }
 
     stage('SonarQube Analysis') {
+      agent any
       steps {
         withSonarQubeEnv('sonarqube-local') {
           sh '''
@@ -69,13 +70,14 @@ pipeline {
 
 
     stage('Quality Gate') {
-      agent { label 'docker-agent' }
+      agent any
       steps {
         timeout(time: 5, unit: 'MINUTES') {
           waitForQualityGate abortPipeline: true
         }
       }
     }
+
   }
 
   post {
