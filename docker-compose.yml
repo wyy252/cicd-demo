@@ -1,11 +1,9 @@
 services:
   mysql:
-    image: mysql:8.0
+    build: ./db
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: staging_db
-    volumes:
-      - ./db:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-proot"]
       interval: 5s
