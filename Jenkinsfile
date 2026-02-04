@@ -45,7 +45,7 @@ pipeline {
     }
 
     stage('SonarQube Analysis') {
-      agent any
+      agent { label 'docker-agent' }   
       steps {
         withSonarQubeEnv('sonarqube-local') {
           sh '''
@@ -67,6 +67,7 @@ pipeline {
         }
       }
     }
+
 
 
     stage('Quality Gate') {
