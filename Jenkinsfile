@@ -4,6 +4,7 @@ pipeline {
   environment {
     SONAR_PROJECT_KEY  = 'cicd-demo'
     SONAR_PROJECT_NAME = 'cicd-demo'
+    SONARQUBE_SERVER_NAME = 'sonarqube-local'
   }
 
   stages {
@@ -17,8 +18,7 @@ pipeline {
       steps {
         sh '''
           set -eux
-          docker-compose down || true
-          docker-compose up -d --build
+          docker-compose up -d --build --remove-orphans
           docker-compose ps
         '''
       }
@@ -47,19 +47,19 @@ pipeline {
     stage('SonarQube Analysis') {
       agent { label 'docker-agent' }
       steps {
-        withSonarQubeEnv('sonarqube-local') {
+        withSonarQubeEnv(env.SONARQUBE_SERVER_NAME) {
           sh '''
             set -eux
-
             echo "SONAR_HOST_URL=$SONAR_HOST_URL"
 
-            if [ -z "${SONAR_AUTH_TOKEN:-}" ] && [ -z "${SONAR_TOKEN:-}" ] && [ -z "${SONARQUBE_AUTH_TOKEN:-}" ]; then
-              echo "No Sonar token injected. Check Jenkins SonarQube server config."
+            SONAR_TOK="${SONAR_AUTH_TOKEN:-${SONAR_TOKEN:-${SONARQUBE_AUTH_TOKEN:-}}}"
+            if [ -z "$SONAR_TOK" ]; then
+              echo "No Sonar token injected by Jenkins."
               exit 1
             fi
 
-            SONAR_TOK="${SONAR_AUTH_TOKEN:-${SONAR_TOKEN:-${SONARQUBE_AUTH_TOKEN:-}}}"
-            docker run --rm --network jenkins-net curlimages/curl:8.6.0 -fsS "$SONAR_HOST_URL/api/system/status"
+            docker run --rm --network jenkins-net curlimages/curl:8.6.0 -fsS \
+              "$SONAR_HOST_URL/api/system/status"
 
             rm -rf .scannerwork || true
 
@@ -72,11 +72,11 @@ pipeline {
               -Dsonar.projectName="$SONAR_PROJECT_NAME" \
               -Dsonar.sources=. \
               -Dsonar.exclusions=**/.git/**,**/dist/**,**/__pycache__/**,**/*.tar.gz \
-              -Dsonar.sourceEncoding=UTF-8
-
+              -Dsonar.sourceEncoding=UTF-8 \
+              -Dsonar.working.directory=/usr/src/.scannerwork
 
             test -f .scannerwork/report-task.txt
-            echo "report-task.txt:"
+            echo "Found report-task.txt:"
             cat .scannerwork/report-task.txt
           '''
         }
@@ -100,7 +100,8 @@ pipeline {
           set +e
           docker-compose logs --no-color --tail=200 mysql
           docker-compose logs --no-color --tail=200 api
-          docker-compose down || true
+
+          docker-compose stop api mysql || true
         '''
       }
     }
