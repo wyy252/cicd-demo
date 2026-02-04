@@ -45,17 +45,21 @@ pipeline {
     }
 
     stage('SonarQube Analysis') {
-      agent { label 'docker-agent' }   
+      agent { label 'docker-agent' }
       steps {
         withSonarQubeEnv('sonarqube-local') {
           sh '''
             set -eux
             echo "SONAR_HOST_URL=$SONAR_HOST_URL"
+            echo "WORKSPACE PWD=$(pwd)"
+            ls -la
 
             docker run --rm --network jenkins-net --user 0:0 \
               -e SONAR_HOST_URL="$SONAR_HOST_URL" \
               -e SONAR_TOKEN="$SONAR_AUTH_TOKEN" \
+              -e SONAR_SCANNER_OPTS="-Duser.home=/tmp" \
               -v "$PWD:/usr/src" \
+              -w /usr/src \
               sonarsource/sonar-scanner-cli:11 \
               -Dsonar.projectKey=cicd-demo \
               -Dsonar.projectName=cicd-demo \
@@ -63,6 +67,11 @@ pipeline {
               -Dsonar.exclusions=**/.git/**,**/dist/**,**/__pycache__/**,**/*.tar.gz \
               -Dsonar.sourceEncoding=UTF-8 \
               -Dsonar.working.directory=/usr/src/.scannerwork
+
+            echo "=== debug: scanner output files ==="
+            ls -la .scannerwork || true
+            echo "=== find report-task.txt ==="
+            find . -maxdepth 4 -name report-task.txt -print -exec cat {} \\; || true
           '''
         }
       }
@@ -71,13 +80,16 @@ pipeline {
 
 
     stage('Quality Gate') {
-      agent any
+      agent { label 'docker-agent' }
       steps {
-        timeout(time: 5, unit: 'MINUTES') {
-          waitForQualityGate abortPipeline: true
+        withSonarQubeEnv('sonarqube-local') {
+          timeout(time: 5, unit: 'MINUTES') {
+            waitForQualityGate abortPipeline: true
+          }
         }
       }
     }
+
 
   }
 
