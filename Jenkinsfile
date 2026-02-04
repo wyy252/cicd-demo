@@ -2,6 +2,16 @@ pipeline {
   agent none
 
   stages {
+    stage('Check Docker Compose') {
+      agent { label 'docker' }
+      steps {
+        sh 'docker version'
+        sh 'docker compose version || true'
+        sh 'docker-compose --version || true'
+        sh 'which docker || true'
+      }
+    }
+
 
     stage('Checkout') {
       agent any
