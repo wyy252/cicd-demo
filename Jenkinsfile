@@ -53,6 +53,16 @@ pipeline {
         '''
       }
     }
+    stage('Debug networks') {
+      agent { label 'docker-agent' }
+      steps {
+        sh '''
+          set -eux
+          docker network ls
+          docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
+        '''
+      }
+    }
 
     stage('SonarQube Analysis') {
       agent { label 'docker-agent' }
