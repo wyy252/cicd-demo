@@ -127,7 +127,7 @@ pipeline {
           set +e
           docker-compose logs --no-color --tail=200 mysql
           docker-compose logs --no-color --tail=200 api
-          docker-compose down -v
+          docker-compose down
         '''
       }
     }
