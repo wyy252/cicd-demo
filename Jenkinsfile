@@ -45,44 +45,28 @@ pipeline {
     }
 
     stage('SonarQube Analysis') {
-      agent { label 'docker-agent' }
       steps {
-        withSonarQubeEnv(env.SONARQUBE_SERVER_NAME) {
+        withSonarQubeEnv('sonarqube-local') {
           sh '''
             set -eux
             echo "SONAR_HOST_URL=$SONAR_HOST_URL"
 
-            SONAR_TOK="${SONAR_AUTH_TOKEN:-${SONAR_TOKEN:-${SONARQUBE_AUTH_TOKEN:-}}}"
-            if [ -z "$SONAR_TOK" ]; then
-              echo "No Sonar token injected by Jenkins."
-              exit 1
-            fi
-
-            docker run --rm --network jenkins-net curlimages/curl:8.6.0 -fsS \
-              "$SONAR_HOST_URL/api/system/status"
-
-            rm -rf .scannerwork || true
-
-            docker run --rm --network jenkins-net \
-              --user 0:0 \
+            docker run --rm --network jenkins-net --user 0:0 \
               -e SONAR_HOST_URL="$SONAR_HOST_URL" \
-              -e SONAR_TOKEN="$SONAR_TOK" \
+              -e SONAR_TOKEN="$SONAR_AUTH_TOKEN" \
               -v "$PWD:/usr/src" \
               sonarsource/sonar-scanner-cli:11 \
-              -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
-              -Dsonar.projectName="$SONAR_PROJECT_NAME" \
+              -Dsonar.projectKey=cicd-demo \
+              -Dsonar.projectName=cicd-demo \
               -Dsonar.sources=. \
               -Dsonar.exclusions=**/.git/**,**/dist/**,**/__pycache__/**,**/*.tar.gz \
               -Dsonar.sourceEncoding=UTF-8 \
               -Dsonar.working.directory=/usr/src/.scannerwork
-
-            test -f .scannerwork/report-task.txt
-            echo "Found report-task.txt:"
-            cat .scannerwork/report-task.txt
           '''
         }
       }
     }
+
 
     stage('Quality Gate') {
       agent { label 'docker-agent' }
