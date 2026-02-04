@@ -1,18 +1,14 @@
 services:
   mysql:
-    image: mysql:8.0
+    build: ./db
     environment:
       MYSQL_ROOT_PASSWORD: root
-    ports:
-      - "3307:3306"
-    volumes:
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
-      - ./db/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql
+      MYSQL_DATABASE: staging_db
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-proot"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 30
 
   api:
     build: ./app
@@ -22,15 +18,11 @@ services:
       DB_USER: root
       DB_PASS: root
       DB_NAME: staging_db
-    ports:
-      - "5000:5000"
     depends_on:
       mysql:
         condition: service_healthy
 
   sonarqube:
     image: sonarqube:community
-    ports:
-      - "9000:9000"
     environment:
       SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
