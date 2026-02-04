@@ -74,7 +74,7 @@ pipeline {
               -e SONAR_HOST_URL="$SONAR_HOST_URL" \
               -e SONAR_TOKEN="$SONAR_AUTH_TOKEN" \
               -v "$PWD:/usr/src" \
-              sonarsource/sonar-scanner-cli:latest \
+              sonarsource/sonar-scanner-cli:10 \
               -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
               -Dsonar.projectName="$SONAR_PROJECT_NAME" \
               -Dsonar.sources=app \
