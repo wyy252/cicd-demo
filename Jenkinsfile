@@ -10,12 +10,11 @@ pipeline {
     }
 
     stage('Build & Run (Docker)') {
-      agent { label 'docker' }
+      agent { label 'docker-agent' }
       steps {
         sh '''
           set -eux
-          docker version
-          docker-compose version || true
+          docker-compose down -v || true
           docker-compose up -d --build
           docker-compose ps
         '''
@@ -23,19 +22,21 @@ pipeline {
     }
 
     stage('Smoke test') {
+      agent { label 'docker-agent' }
       steps {
         sh '''
           set -eux
+          NET=$(docker network ls --format '{{.Name}}' | grep -E '^cicd-demo-multibranch_main_default$' || true)
 
-          NET=$(docker network ls --format '{{.Name}}' | grep -E 'cicd-demo.*_default$' | head -n 1)
+          if [ -z "$NET" ]; then
+            API_CID=$(docker-compose ps -q api)
+            NET=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s " $k}}{{end}}' "$API_CID" | awk '{print $1}')
+          fi
 
-          echo "Detected network: ${NET}"
+          echo "Compose network = $NET"
 
           for i in $(seq 1 30); do
-            if docker run --rm --network "${NET}" curlimages/curl:8.6.0 -fsS http://api:5000/api/health; then
-              echo "Smoke test passed"
-              exit 0
-            fi
+            docker run --rm --network "$NET" curlimages/curl:8.6.0 -fsS http://api:5000/api/health && exit 0
             sleep 1
           done
 
@@ -44,49 +45,11 @@ pipeline {
         '''
       }
     }
-    stage('Debug Info') {
-      steps {
-        sh '''
-          set +e
-          echo "=== WHOAMI / PWD ==="
-          whoami
-          pwd
-
-          echo "=== DOCKER INFO ==="
-          docker version
-          docker info | head -n 60
-
-          echo "=== CONTAINERS ==="
-          docker ps -a --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
-
-          echo "=== COMPOSE PROJECT (guess) ==="
-          ls -la
-          echo "--- docker-compose.yml ---"
-          sed -n '1,200p' docker-compose.yml || true
-
-          echo "=== NETWORKS (filtered) ==="
-          docker network ls | grep -E 'cicd-demo|jenkins|default' || true
-
-          echo "=== COMPOSE PS ==="
-          docker-compose ps || true
-
-          echo "=== INSPECT COMPOSE NETWORK ==="
-          NET=$(docker network ls --format '{{.Name}}' | grep -E 'cicd-demo.*_default$' | head -n 1)
-          echo "NET=$NET"
-          docker network inspect "$NET" | head -n 80 || true
-
-          echo "=== TRY CURL FROM NETWORK ==="
-          docker run --rm --network "$NET" curlimages/curl:8.6.0 -fsS http://api:5000/api/health || true
-        '''
-      }
-    }
-
-
   }
 
   post {
     always {
-      node('docker') {
+      node('docker-agent') {
         sh '''
           set +e
           docker-compose logs --no-color --tail=200 mysql
