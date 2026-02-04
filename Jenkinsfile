@@ -1,6 +1,12 @@
 pipeline {
   agent none
 
+  environment {
+    // SonarQube project identifiers
+    SONAR_PROJECT_KEY = 'cicd-demo'
+    SONAR_PROJECT_NAME = 'cicd-demo'
+  }
+
   stages {
     stage('Checkout') {
       agent any
@@ -27,9 +33,9 @@ pipeline {
         sh '''
           set -eux
 
+          # Find compose network name
           NET=$(docker network ls --format '{{.Name}}' | grep -E '^cicd-demo-multibranch_main_default$' || true)
 
-          # Fallback: inspect the api container and grab its first network name
           if [ -z "$NET" ]; then
             API_CID=$(docker-compose ps -q api)
             NET=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s " $k}}{{end}}' "$API_CID" | awk '{print $1}')
@@ -48,37 +54,34 @@ pipeline {
       }
     }
 
-    stage('Build Artifact') {
+    stage('SonarQube Analysis') {
       agent { label 'docker-agent' }
       steps {
-        sh '''
-          set -eux
+        withSonarQubeEnv('sonarqube-local') {
+          sh '''
+            set -eux
 
-          # Ensure zip exists (agent base image may not include it)
-          (command -v zip >/dev/null 2>&1) || (
-            (command -v apt-get >/dev/null 2>&1 && apt-get update && apt-get install -y zip) || true
-          )
-          (command -v zip >/dev/null 2>&1) || (
-            (command -v apk >/dev/null 2>&1 && apk add --no-cache zip) || true
-          )
-          zip -v
+            # Run Sonar scanner on the checked-out workspace
+            sonar-scanner \
+              -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+              -Dsonar.projectName=$SONAR_PROJECT_NAME \
+              -Dsonar.sources=app \
+              -Dsonar.tests=tests \
+              -Dsonar.python.version=3.11 \
+              -Dsonar.sourceEncoding=UTF-8 \
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_AUTH_TOKEN
+          '''
+        }
+      }
+    }
 
-          # Versioning: semantic-ish version using Jenkins build number
-          VERSION="1.0.${BUILD_NUMBER}"
-          echo "VERSION=$VERSION" | tee artifact_version.txt
-
-          ART="cicd-demo-${VERSION}.zip"
-          echo "ARTIFACT=$ART" | tee artifact_name.txt
-
-          rm -f *.zip || true
-
-          # Package the repo essentials (exclude git + caches)
-          zip -r "$ART" \
-            app db tests perf docker-compose.yml Jenkinsfile \
-            -x "*.git*" -x "__pycache__/*" -x "*.pyc"
-
-          ls -lh "$ART"
-        '''
+    stage('Quality Gate') {
+      agent { label 'docker-agent' }
+      steps {
+        timeout(time: 5, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
+        }
       }
     }
   }
@@ -92,7 +95,6 @@ pipeline {
           docker-compose logs --no-color --tail=200 api
           docker-compose down -v
         '''
-        archiveArtifacts artifacts: '*.zip, artifact_version.txt, artifact_name.txt', fingerprint: true, onlyIfSuccessful: false
       }
     }
   }
