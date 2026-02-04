@@ -14,10 +14,8 @@ pipeline {
 
 
     stage('Checkout') {
-      agent any
-      steps {
-        checkout scm
-      }
+      agent { label 'docker' }
+      steps { checkout scm }
     }
 
     stage('Build & Run (Docker)') {
