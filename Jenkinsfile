@@ -72,13 +72,25 @@ pipeline {
             set -eux
 
             NET=$(docker network ls --format '{{.Name}}' | grep -E '^cicd-demo-multibranch_main_default$' || true)
-
             if [ -z "$NET" ]; then
               API_CID=$(docker-compose ps -q api)
               NET=$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{printf "%s " $k}}{{end}}' "$API_CID" | awk '{print $1}')
             fi
-
             echo "Compose network = $NET"
+
+            for i in $(seq 1 90); do
+              if docker run --rm --network "$NET" curlimages/curl:8.6.0 -fsS \
+                  "$SONAR_HOST_URL/api/server/version" >/dev/null; then
+                echo "SonarQube is ready"
+                break
+              fi
+              echo "Waiting for SonarQube... ($i/90)"
+              sleep 2
+            done
+
+            docker run --rm --network "$NET" curlimages/curl:8.6.0 -fsS \
+              "$SONAR_HOST_URL/api/server/version"
+            # -----------------------------------------------
 
             docker run --rm --network "$NET" \
               -e SONAR_HOST_URL="$SONAR_HOST_URL" \
@@ -90,12 +102,12 @@ pipeline {
               -Dsonar.sources=app \
               -Dsonar.tests=tests \
               -Dsonar.python.version=3.11 \
-              -Dsonar.sourceEncoding=UTF-8 \
-              -Dsonar.token="$SONAR_AUTH_TOKEN"
+              -Dsonar.sourceEncoding=UTF-8
           '''
         }
       }
     }
+
 
 
     stage('Quality Gate') {
