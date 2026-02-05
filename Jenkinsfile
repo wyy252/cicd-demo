@@ -44,45 +44,32 @@ pipeline {
       }
     }
     stage('SonarQube Analysis') {
-      agent { label 'docker-agent' }  
+      agent { label 'docker-agent' }
+      environment {
+        SCANNER_HOME = tool 'sonar-scanner'   
+      }
       steps {
         withSonarQubeEnv('sonarqube-local') {
           sh '''
             set -eux
-            echo "SONAR_HOST_URL=$SONAR_HOST_URL"
-            echo "WORKSPACE=$WORKSPACE"
-            echo "PWD=$(pwd)"
-            ls -la
-
             rm -rf .scannerwork || true
 
-            echo "=== run scanner (report-task.txt must land in WORKSPACE) ==="
-            docker run --rm --network jenkins-net --user 0:0 \
-              -e SONAR_HOST_URL="$SONAR_HOST_URL" \
-              -e SONAR_TOKEN="$SONAR_AUTH_TOKEN" \
-              -e SONAR_SCANNER_OPTS="-Duser.home=/tmp" \
-              -v "$WORKSPACE:/usr/src" \
-              -w /usr/src \
-              sonarsource/sonar-scanner-cli:11 \
-              sonar-scanner \
-                -Dsonar.projectKey=cicd-demo \
-                -Dsonar.projectName=cicd-demo \
-                -Dsonar.sources=. \
-                -Dsonar.exclusions=**/.git/**,**/dist/**,**/__pycache__/**,**/*.tar.gz \
-                -Dsonar.sourceEncoding=UTF-8 \
-                -Dsonar.working.directory=/usr/src/.scannerwork
+            "$SCANNER_HOME/bin/sonar-scanner" \
+              -Dsonar.projectKey=cicd-demo \
+              -Dsonar.projectName=cicd-demo \
+              -Dsonar.sources=. \
+              -Dsonar.exclusions=**/.git/**,**/dist/**,**/__pycache__/**,**/*.tar.gz \
+              -Dsonar.sourceEncoding=UTF-8
 
-            echo "=== after scanner: list workspace .scannerwork ==="
-            ls -la .scannerwork || true
-            echo "=== show report-task.txt in workspace ==="
-            ls -la .scannerwork/report-task.txt && cat .scannerwork/report-task.txt
+            ls -la .scannerwork
+            cat .scannerwork/report-task.txt
           '''
         }
       }
     }
 
     stage('Quality Gate') {
-      agent { label 'docker-agent' }  
+      agent { label 'docker-agent' }
       steps {
         timeout(time: 5, unit: 'MINUTES') {
           waitForQualityGate abortPipeline: true
