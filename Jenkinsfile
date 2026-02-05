@@ -58,5 +58,43 @@ pipeline {
         '''
       }
     }
+    success {
+      emailext(
+        subject: "✅ Jenkins SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+        to: "zhaobinsnow@gmail.com",
+        mimeType: 'text/html',
+        body: """
+          <p><b>Status:</b> SUCCESS</p>
+          <p><b>Job:</b> ${env.JOB_NAME}</p>
+          <p><b>Build:</b> #${env.BUILD_NUMBER}</p>
+          <p><b>Branch:</b> ${env.BRANCH_NAME}</p>
+          <p><b>URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+        """
+      )
+    }
+
+    failure {
+      def logText = currentBuild.rawBuild.getLog(120).join("\n")
+      emailext(
+        subject: "❌ Jenkins FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+        to: "zhaobinsnow@gmail.com",
+        mimeType: 'text/html',
+        body: """
+          <p><b>Status:</b> FAILURE</p>
+          <p><b>Job:</b> ${env.JOB_NAME}</p>
+          <p><b>Build:</b> #${env.BUILD_NUMBER}</p>
+          <p><b>Branch:</b> ${env.BRANCH_NAME}</p>
+          <p><b>URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+          <hr/>
+          <p><b>Error details (last 120 lines):</b></p>
+          <pre style="white-space: pre-wrap;">${logText}</pre>
+        """
+      )
+    }
+
+    always {
+      echo "Post actions complete."
+    }
+
   }
 }
