@@ -44,7 +44,7 @@ pipeline {
       }
     }
     stage('SonarQube Analysis') {
-      agent { label 'Jenkins' }  
+      agent { label 'docker' }  
       steps {
         withSonarQubeEnv('sonarqube-local') {
           sh '''
@@ -82,7 +82,7 @@ pipeline {
     }
 
     stage('Quality Gate') {
-      agent { label 'Jenkins' }  
+      agent { label 'docker' }  
       steps {
         timeout(time: 5, unit: 'MINUTES') {
           waitForQualityGate abortPipeline: true
