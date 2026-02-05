@@ -43,62 +43,49 @@ pipeline {
         '''
       }
     }
-
     stage('SonarQube Analysis') {
-      agent { label 'docker-agent' }
+      agent { label 'Jenkins' }  
       steps {
         withSonarQubeEnv('sonarqube-local') {
           sh '''
             set -eux
             echo "SONAR_HOST_URL=$SONAR_HOST_URL"
-            echo "WORKSPACE PWD=$(pwd)"
+            echo "WORKSPACE=$WORKSPACE"
+            echo "PWD=$(pwd)"
             ls -la
 
-            echo "=== run scanner & debug inside container ==="
+            rm -rf .scannerwork || true
+
+            echo "=== run scanner (report-task.txt must land in WORKSPACE) ==="
             docker run --rm --network jenkins-net --user 0:0 \
               -e SONAR_HOST_URL="$SONAR_HOST_URL" \
               -e SONAR_TOKEN="$SONAR_AUTH_TOKEN" \
               -e SONAR_SCANNER_OPTS="-Duser.home=/tmp" \
-              -v "$PWD:/usr/src" \
+              -v "$WORKSPACE:/usr/src" \
               -w /usr/src \
               sonarsource/sonar-scanner-cli:11 \
-              /bin/bash -lc '
-                set -eux
-                sonar-scanner \
-                  -Dsonar.projectKey=cicd-demo \
-                  -Dsonar.projectName=cicd-demo \
-                  -Dsonar.sources=. \
-                  -Dsonar.exclusions=**/.git/**,**/dist/**,**/__pycache__/**,**/*.tar.gz \
-                  -Dsonar.sourceEncoding=UTF-8 \
-                  -Dsonar.working.directory=/usr/src/.scannerwork
+              sonar-scanner \
+                -Dsonar.projectKey=cicd-demo \
+                -Dsonar.projectName=cicd-demo \
+                -Dsonar.sources=. \
+                -Dsonar.exclusions=**/.git/**,**/dist/**,**/__pycache__/**,**/*.tar.gz \
+                -Dsonar.sourceEncoding=UTF-8 \
+                -Dsonar.working.directory=/usr/src/.scannerwork
 
-                echo "=== inside container: list /usr/src/.scannerwork ==="
-                ls -la /usr/src/.scannerwork || true
-
-                echo "=== inside container: show report-task.txt if exists ==="
-                find / -maxdepth 5 -name report-task.txt -print -exec cat {} \\; || true
-              '
-
-            echo "=== after container exit: list workspace .scannerwork ==="
+            echo "=== after scanner: list workspace .scannerwork ==="
             ls -la .scannerwork || true
-
-            echo "=== after container exit: find report-task.txt in workspace ==="
-            find . -maxdepth 4 -name report-task.txt -print -exec cat {} \\; || true
+            echo "=== show report-task.txt in workspace ==="
+            ls -la .scannerwork/report-task.txt && cat .scannerwork/report-task.txt
           '''
         }
       }
     }
 
-
-
-
     stage('Quality Gate') {
-      agent { label 'docker-agent' }
+      agent { label 'Jenkins' }  
       steps {
-        withSonarQubeEnv('sonarqube-local') {
-          timeout(time: 5, unit: 'MINUTES') {
-            waitForQualityGate abortPipeline: true
-          }
+        timeout(time: 5, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
         }
       }
     }
