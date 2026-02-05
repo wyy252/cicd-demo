@@ -34,5 +34,21 @@ def create_item():
 
     return jsonify({"id": new_id, "name": name}), 201
 
+def create_item():
+    data = request.get_json(silent=True) or {}
+    name = data.get("name")
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO items (name) VALUES (%s);", (name,))
+    conn.commit()
+    new_id = cur.lastrowid
+    cur.close()
+    conn.close()
+
+    return jsonify({"id": new_id, "name": name}), 201
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
