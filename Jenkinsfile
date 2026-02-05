@@ -92,9 +92,6 @@ pipeline {
       )
     }
 
-    always {
-      echo "Post actions complete."
-    }
 
   }
 }
