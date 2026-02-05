@@ -62,7 +62,7 @@ pipeline {
     success {
       emailext(
         subject: "✅ Jenkins SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-        to: "YOUR_EMAIL_HERE",
+        to: "zhaobinsnow@gmail.com",
         mimeType: 'text/html',
         body: """
           <p><b>Status:</b> SUCCESS</p>
@@ -78,7 +78,7 @@ pipeline {
       def logText = currentBuild.rawBuild.getLog(120).join("\n")
       emailext(
         subject: "❌ Jenkins FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-        to: "YOUR_EMAIL_HERE",
+        to: "zhaobinsnow@gmail.com",
         mimeType: 'text/html',
         body: """
           <p><b>Status:</b> FAILURE</p>
