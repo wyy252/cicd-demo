@@ -74,6 +74,7 @@ pipeline {
     }
 
     failure {
+      script {
       def logText = currentBuild.rawBuild.getLog(120).join("\n")
       emailext(
         subject: "❌ Jenkins FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
@@ -90,6 +91,7 @@ pipeline {
           <pre style="white-space: pre-wrap;">${logText}</pre>
         """
       )
+      }
     }
 
 
